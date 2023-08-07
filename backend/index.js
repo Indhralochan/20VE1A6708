@@ -1,5 +1,7 @@
 const express = require('express')
-const app = express()
+const cors = require('cors')
+const app=express();
+app.use(cors());
 const axios = require('axios')
 async function getToken() {
     const url = "http://20.244.56.144/train/auth"; 
@@ -20,10 +22,8 @@ async function getToken() {
         throw error;
     }
 }
-app.get('/',(req,res)=>{
-    res.send({hello:"hi"})
-})
-app.get('/data',async(req,res)=>{
+
+app.get('/',async(req,res)=>{
     try {
         const resp = await getToken();
         const accessToken = resp.access_token
@@ -63,6 +63,39 @@ app.get('/data',async(req,res)=>{
         res.status(500).send('Internal Server Error');
     }
 })
+
+app.get('/train/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log(id);
+        const resp = await getToken();
+        const accessToken = resp.access_token;
+        const headers = {
+            'Authorization': `Bearer ${accessToken}`
+        };
+        const url = `http://20.244.56.144:80/train/trains/${id}`;
+        console.log(url);
+        const response = await axios.get(url, { headers });
+        const responseData = {
+            trainName: response.data.trainName,
+            trainNumber: response.data.trainNumber,
+            departureTime: `${response.data.departureTime.Hours}:${response.data.departureTime.Minutes}`,
+            seatsAvailable: {
+                sleeper: response.data.seatsAvailable.sleeper,
+                AC: response.data.seatsAvailable.AC
+            },
+            price: {
+                sleeper: response.data.price.sleeper,
+                AC: response.data.price.AC
+            },
+            delayedBy: response.data.delayedBy
+        };
+        res.json(responseData);
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
 
 app.listen(5000,()=>{
     console.log("server began at port 5000 "+"http://localhost:5000/")
